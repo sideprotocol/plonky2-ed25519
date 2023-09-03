@@ -1,0 +1,3 @@
+[submodule "extern/plonky2"]
+	path = extern/plonky2
+	url = git@github.com:sideprotocol/plonky2-gpu.git
