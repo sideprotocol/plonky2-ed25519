@@ -85,7 +85,7 @@ where
     );
     println!("index num: {}", builder.virtual_target_index);
 
-    let data = builder.my_build::<C>();
+    let data = builder.build::<C>();
 
     // {
     //     let proof = ProofWithPublicInputs::from_bytes(fs::read("ed25519.proof").expect("无法读取文件"), &data.common)?;
