@@ -41,23 +41,24 @@ use rayon::iter::split;
 use serde::{Serialize, Deserialize};
 use serde_json;
 use std::io::prelude::*;
+use cudart::memory::CudaMemoryType::Device;
 use plonky2::fri::oracle::CudaInnerContext;
 use plonky2::hash::hashing::{hash_n_to_hash_no_pad, hash_n_to_m_no_pad, PlonkyPermutation};
 use plonky2::hash::poseidon::{Poseidon, PoseidonHash, PoseidonPermutation};
 use plonky2_field::fft::fft_root_table;
 use plonky2_field::types::Field;
 use plonky2_util::log2_strict;
-use rustacuda::memory::cuda_malloc;
-
-#[macro_use]
-extern crate rustacuda;
-extern crate rustacuda_core;
+use rustacuda::memory::{cuda_malloc, DeviceBox};
 use rustacuda::prelude::*;
+use rustacuda::memory::DeviceBuffer;
+
+// #[macro_use]
+// extern crate rustacuda;
+// extern crate rustacuda_core;
 
 // extern crate cuda;
 // use cuda::runtime::{CudaError, cudaMalloc, cudaMemcpy, cudaFree};
 // use cuda::runtime::raw::{cudaError_t, cudaError_enum};
-
 
 type ProofTuple<F, C, const D: usize> = (
     ProofWithPublicInputs<F, C, D>,
@@ -65,7 +66,7 @@ type ProofTuple<F, C, const D: usize> = (
     CommonCircuitData<F, D>,
 );
 
-fn prove_ed25519<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>(
+fn prove_ed25519<F: RichField + Extendable<D> + rustacuda::memory::DeviceCopy, C: GenericConfig<D, F = F>, const D: usize>(
     msg: &[u8],
     sigv: &[u8],
     pkv: &[u8],
@@ -85,8 +86,8 @@ where
     );
     println!("index num: {}", builder.virtual_target_index);
 
-    let data = builder.build::<C>();
-
+    let data = builder.my_build::<C>();
+    println!("gates: {}", data.common.gates.len());
     // {
     //     let proof = ProofWithPublicInputs::from_bytes(fs::read("ed25519.proof").expect("无法读取文件"), &data.common)?;
     //     let timing = TimingTree::new("verify", Level::Info);
@@ -95,12 +96,21 @@ where
     //     exit(0);
     // }
     let mut ctx;
-
     {
-        cudart::device::set_device(0)?;
-        cudart::device::device_reset()?;
-        let stream = cudart::stream::CudaStream::create_with_flags(cudart::stream::CudaStreamCreateFlags::NON_BLOCKING)?;
-        let stream2 = cudart::stream::CudaStream::create_with_flags(cudart::stream::CudaStreamCreateFlags::NON_BLOCKING)?;
+        rustacuda::init(CudaFlags::empty()).unwrap();
+        let device_index = 0;
+        let device = rustacuda::prelude::Device::get_device(device_index).unwrap();
+        let _ctx = Context::create_and_push(ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO, device).unwrap();
+        let stream = Stream::new(StreamFlags::NON_BLOCKING, None)?;
+        let stream2 = Stream::new(StreamFlags::NON_BLOCKING, None)?;
+        // let host_data = vec![1, 2, 3, 4];
+        // let mut device_data = DeviceBuffer::from_slice(&host_data)?;
+        // device_data.copy_from(&host_data);
+        // cudart::device::set_device(0)?;
+        // cudart::device::device_reset()?;
+        //
+        // let stream = cudart::stream::CudaStream::create_with_flags(cudart::stream::CudaStreamCreateFlags::NON_BLOCKING)?;
+        // let stream2 = cudart::stream::CudaStream::create_with_flags(cudart::stream::CudaStreamCreateFlags::NON_BLOCKING)?;
 
         let poly_num: usize = 234;
         let values_num_per_poly  = 1<<18;
@@ -161,42 +171,57 @@ where
 
         let digests_and_caps_buf2 = digests_and_caps_buf.clone();
 
-        let mut values_device = {
-                let mut values_device = cudart::memory::DeviceAllocation::<F>::alloc(values_flatten_len).unwrap();
-                // cudart::memory::memory_copy(&mut values_device.index_mut(0..values_flatten_len), &values_flatten).unwrap();
-                values_device
+        let mut values_device = unsafe{
+            DeviceBuffer::<F>::uninitialized(values_flatten_len)?
         };
+
+        // let mut values_device = {
+        //         let mut values_device = cudart::memory::DeviceAllocation::<F>::alloc(values_flatten_len).unwrap();
+        //         // cudart::memory::memory_copy(&mut values_device.index_mut(0..values_flatten_len), &values_flatten).unwrap();
+        //         values_device
+        // };
 
         // println!("len: {},cap: {}, digs len: {}, numdigs: {}", digests_and_caps_buf.len(), digests_and_caps_buf.capacity(), num_digests_and_caps, num_digests);
 
         let pad_extvalues_len = ext_values_flatten.len();
         let mut ext_values_device = {
-                let mut values_device = cudart::memory::DeviceAllocation::<F>::alloc(
-                        pad_extvalues_len
+                // let mut values_device = cudart::memory::DeviceAllocation::<F>::alloc(
+                //         pad_extvalues_len
+                //         + ext_values_flatten_len
+                //         + digests_and_caps_buf.len()*4
+                //     ).unwrap();
+                let mut values_device = unsafe {
+                    DeviceBuffer::<F>::uninitialized(
+                    pad_extvalues_len
                         + ext_values_flatten_len
                         + digests_and_caps_buf.len()*4
-                    ).unwrap();
-                // cudart::memory::memory_copy(&mut values_device.index_mut(0..values_flatten_len), &values_flatten).unwrap();
+                    )
+                }.unwrap();
+
+            // cudart::memory::memory_copy(&mut values_device.index_mut(0..values_flatten_len), &values_flatten).unwrap();
                 values_device
 	    };
 
         let root_table_device = {
-                let mut root_table_device = cudart::memory::DeviceAllocation::<F>::alloc(fft_root_table_deg.len()).unwrap();
-                cudart::memory::memory_copy(&mut root_table_device.index_mut(0..fft_root_table_deg.len()), &fft_root_table_deg).unwrap();
+                // let mut root_table_device = cudart::memory::DeviceAllocation::<F>::alloc(fft_root_table_deg.len()).unwrap();
+                // cudart::memory::memory_copy(&mut root_table_device.index_mut(0..fft_root_table_deg.len()), &fft_root_table_deg).unwrap();
+                let mut root_table_device = DeviceBuffer::from_slice(&fft_root_table_deg).unwrap();
                 root_table_device
 	    };
 
         let root_table_device2 = {
-                let mut root_table_device = cudart::memory::DeviceAllocation::<F>::alloc(fft_root_table_max.len()).unwrap();
-                cudart::memory::memory_copy(&mut root_table_device.index_mut(0..fft_root_table_max.len()), &fft_root_table_max).unwrap();
+                // let mut root_table_device = cudart::memory::DeviceAllocation::<F>::alloc(fft_root_table_max.len()).unwrap();
+                // cudart::memory::memory_copy(&mut root_table_device.index_mut(0..fft_root_table_max.len()), &fft_root_table_max).unwrap();
+                let mut root_table_device = DeviceBuffer::from_slice(&fft_root_table_max).unwrap();
                 root_table_device
 	    };
 
         let shift_powers = F::coset_shift().powers().take(1<<lg_n).collect::<Vec<F>>();
         let shift_powers_device = {
-                let mut root_table_device = cudart::memory::DeviceAllocation::<F>::alloc(shift_powers.len()).unwrap();
-                cudart::memory::memory_copy(&mut root_table_device.index_mut(0..shift_powers.len()), &shift_powers).unwrap();
-                root_table_device
+                // let mut shift_powers_device = cudart::memory::DeviceAllocation::<F>::alloc(shift_powers.len()).unwrap();
+                // cudart::memory::memory_copy(&mut shift_powers_device.index_mut(0..shift_powers.len()), &shift_powers).unwrap();
+                let mut shift_powers_device = DeviceBuffer::from_slice(&shift_powers).unwrap();
+            shift_powers_device
 	    };
 
 
