@@ -29,19 +29,16 @@ use plonky2_field::extension::Extendable;
 use plonky2_field::goldilocks_field::GoldilocksField;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use std::process::exit;
 use plonky2::timed;
 use plonky2_cuda;
-use cudart;
-use rayon::iter::split;
 
 use serde::{Serialize, Deserialize};
 use serde_json;
 use std::io::prelude::*;
-use cudart::memory::CudaMemoryType::Device;
 use plonky2::fri::oracle::CudaInnerContext;
 use plonky2::hash::hashing::{hash_n_to_hash_no_pad, hash_n_to_m_no_pad, PlonkyPermutation};
 use plonky2::hash::poseidon::{Poseidon, PoseidonHash, PoseidonPermutation};
@@ -86,7 +83,19 @@ where
     );
     println!("index num: {}", builder.virtual_target_index);
 
-    let data = builder.my_build::<C>();
+    let data = {
+        if
+        Path::new("sigma_vecs.bin").exists() &&
+            Path::new("constants_sigmas_commitment.polynomials.bin").exists() &&
+            Path::new("constants_sigmas_commitment.leaves.bin").exists() &&
+            Path::new("constants_sigmas_commitment.digests.bin").exists() &&
+            Path::new("constants_sigmas_commitment.caps.bin").exists() &&
+            Path::new("forest.bin").exists() {
+            builder.my_build::<C>()
+        } else {
+            builder.build::<C>()
+        }
+    };
     println!("gates: {}", data.common.gates.len());
     // {
     //     let proof = ProofWithPublicInputs::from_bytes(fs::read("ed25519.proof").expect("无法读取文件"), &data.common)?;
@@ -101,16 +110,8 @@ where
         let device_index = 0;
         let device = rustacuda::prelude::Device::get_device(device_index).unwrap();
         let _ctx = Context::create_and_push(ContextFlags::MAP_HOST | ContextFlags::SCHED_AUTO, device).unwrap();
-        let stream = Stream::new(StreamFlags::NON_BLOCKING, None)?;
+        let stream  = Stream::new(StreamFlags::NON_BLOCKING, None)?;
         let stream2 = Stream::new(StreamFlags::NON_BLOCKING, None)?;
-        // let host_data = vec![1, 2, 3, 4];
-        // let mut device_data = DeviceBuffer::from_slice(&host_data)?;
-        // device_data.copy_from(&host_data);
-        // cudart::device::set_device(0)?;
-        // cudart::device::device_reset()?;
-        //
-        // let stream = cudart::stream::CudaStream::create_with_flags(cudart::stream::CudaStreamCreateFlags::NON_BLOCKING)?;
-        // let stream2 = cudart::stream::CudaStream::create_with_flags(cudart::stream::CudaStreamCreateFlags::NON_BLOCKING)?;
 
         let poly_num: usize = 234;
         let values_num_per_poly  = 1<<18;
@@ -126,11 +127,6 @@ where
         let fft_root_table_max = fft_root_table(1<<(lg_n + rate_bits)).concat();
         let fft_root_table_deg    = fft_root_table(1 << lg_n).concat();
 
-        // let mut values_flatten = timed!(
-        //     timing,
-        //     "flat map",
-        //     values.into_iter().flat_map(|poly| poly.values).collect::<Vec<F>>()
-        // );
 
         let salt_size = if blinding { SALT_SIZE } else { 0 };
         let values_flatten_len = poly_num*values_num_per_poly;
@@ -175,21 +171,8 @@ where
             DeviceBuffer::<F>::uninitialized(values_flatten_len)?
         };
 
-        // let mut values_device = {
-        //         let mut values_device = cudart::memory::DeviceAllocation::<F>::alloc(values_flatten_len).unwrap();
-        //         // cudart::memory::memory_copy(&mut values_device.index_mut(0..values_flatten_len), &values_flatten).unwrap();
-        //         values_device
-        // };
-
-        // println!("len: {},cap: {}, digs len: {}, numdigs: {}", digests_and_caps_buf.len(), digests_and_caps_buf.capacity(), num_digests_and_caps, num_digests);
-
         let pad_extvalues_len = ext_values_flatten.len();
         let mut ext_values_device = {
-                // let mut values_device = cudart::memory::DeviceAllocation::<F>::alloc(
-                //         pad_extvalues_len
-                //         + ext_values_flatten_len
-                //         + digests_and_caps_buf.len()*4
-                //     ).unwrap();
                 let mut values_device = unsafe {
                     DeviceBuffer::<F>::uninitialized(
                     pad_extvalues_len
@@ -198,28 +181,21 @@ where
                     )
                 }.unwrap();
 
-            // cudart::memory::memory_copy(&mut values_device.index_mut(0..values_flatten_len), &values_flatten).unwrap();
                 values_device
 	    };
 
         let root_table_device = {
-                // let mut root_table_device = cudart::memory::DeviceAllocation::<F>::alloc(fft_root_table_deg.len()).unwrap();
-                // cudart::memory::memory_copy(&mut root_table_device.index_mut(0..fft_root_table_deg.len()), &fft_root_table_deg).unwrap();
                 let mut root_table_device = DeviceBuffer::from_slice(&fft_root_table_deg).unwrap();
                 root_table_device
 	    };
 
         let root_table_device2 = {
-                // let mut root_table_device = cudart::memory::DeviceAllocation::<F>::alloc(fft_root_table_max.len()).unwrap();
-                // cudart::memory::memory_copy(&mut root_table_device.index_mut(0..fft_root_table_max.len()), &fft_root_table_max).unwrap();
                 let mut root_table_device = DeviceBuffer::from_slice(&fft_root_table_max).unwrap();
                 root_table_device
 	    };
 
         let shift_powers = F::coset_shift().powers().take(1<<lg_n).collect::<Vec<F>>();
         let shift_powers_device = {
-                // let mut shift_powers_device = cudart::memory::DeviceAllocation::<F>::alloc(shift_powers.len()).unwrap();
-                // cudart::memory::memory_copy(&mut shift_powers_device.index_mut(0..shift_powers.len()), &shift_powers).unwrap();
                 let mut shift_powers_device = DeviceBuffer::from_slice(&shift_powers).unwrap();
             shift_powers_device
 	    };
@@ -240,6 +216,7 @@ where
             root_table_device,
             root_table_device2,
             shift_powers_device,
+            ctx: _ctx,
         };
     }
 
@@ -252,7 +229,6 @@ where
         &mut ctx,
     )?;
 
-    // let proof = data.prove(pw).unwrap();
     timing.print();
 
     let timing = TimingTree::new("verify", Level::Info);
@@ -263,8 +239,6 @@ where
     file.write_all(&*proof_bytes)
         .expect("Leaf proof file write err");
 
-
-    // test_serialization(&proof, &data.verifier_only, &data.common)?;
     Ok((proof, data.verifier_only, data.common))
 }
 

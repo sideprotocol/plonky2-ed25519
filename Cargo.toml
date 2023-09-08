@@ -14,12 +14,8 @@ plonky2_ecdsa = { path = "./extern/plonky2/ecdsa"}
 plonky2_sha512 = { path = "./plonky2-sha512"}
 plonky2_cuda   = { path = "./extern/plonky2/cuda"}
 #curve25519-dalek = { path = "../curve25519-dalek", features = ["default"] }
-cudart = { path = "./extern/plonky2/z-prize-msm-gpu/bellman-cuda-rust/cudart", package = "bellman-cuda-cudart"}
 rustacuda = "0.1.3"
 rustacuda_core = "0.1.2"
-
-#cuda = "0.3"
-#clang-sys = "0.23.0"
 
 #plonky2 = { git = "https://github.com/polymerdao/plonky2", rev = "4cb0b48df1d227d5461a4c28ed025aaea64e2e62" }
 #plonky2_util = { git = "https://github.com/polymerdao/plonky2", rev = "4cb0b48df1d227d5461a4c28ed025aaea64e2e62" }
