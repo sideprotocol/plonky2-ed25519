@@ -104,6 +104,7 @@ where
     //     timing.print();
     //     exit(0);
     // }
+
     let mut ctx;
     {
         rustacuda::init(CudaFlags::empty()).unwrap();
@@ -167,22 +168,37 @@ where
 
         let digests_and_caps_buf2 = digests_and_caps_buf.clone();
 
-        let mut values_device = unsafe{
-            DeviceBuffer::<F>::uninitialized(values_flatten_len)?
-        };
+        // let mut values_device = unsafe{
+        //     DeviceBuffer::<F>::uninitialized(values_flatten_len)?
+        // };
 
         let pad_extvalues_len = ext_values_flatten.len();
-        let mut ext_values_device = {
-                let mut values_device = unsafe {
-                    DeviceBuffer::<F>::uninitialized(
-                    pad_extvalues_len
-                        + ext_values_flatten_len
-                        + digests_and_caps_buf.len()*4
-                    )
-                }.unwrap();
+        // let mut ext_values_device = {
+        //         let mut values_device = unsafe {
+        //             DeviceBuffer::<F>::uninitialized(
+        //             pad_extvalues_len
+        //                 + ext_values_flatten_len
+        //                 + digests_and_caps_buf.len()*4
+        //             )
+        //         }.unwrap();
+        //
+        //         values_device
+	    // };
 
-                values_device
-	    };
+        let mut cache_mem_device = {
+            let mut cache_mem_device = unsafe {
+                DeviceBuffer::<F>::uninitialized(
+                    values_flatten_len
+
+                        + pad_extvalues_len
+                        + ext_values_flatten_len
+
+                        + digests_and_caps_buf.len()*4
+                )
+            }.unwrap();
+
+            cache_mem_device
+        };
 
         let root_table_device = {
                 let mut root_table_device = DeviceBuffer::from_slice(&fft_root_table_deg).unwrap();
@@ -211,8 +227,7 @@ where
             values_flatten2:       Arc::new(values_flatten2),
             digests_and_caps_buf2: Arc::new(digests_and_caps_buf2),
 
-            values_device,
-            ext_values_device,
+            cache_mem_device,
             root_table_device,
             root_table_device2,
             shift_powers_device,
@@ -221,6 +236,10 @@ where
     }
 
     let mut timing = TimingTree::new("prove", Level::Debug);
+    println!("num_gate_constraints: {}, num_constraints: {}, selectors_info: {:?}",
+             data.common.num_gate_constraints, data.common.num_constants,
+            data.common.selectors_info,
+    );
     let proof = my_prove(
         &data.prover_only,
         &data.common,
