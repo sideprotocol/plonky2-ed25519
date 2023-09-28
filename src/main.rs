@@ -235,6 +235,11 @@ where
         };
     }
 
+
+    for (i, gate) in data.common.gates.iter().enumerate() {
+        println!("gate: {}", gate.0.id());
+    }
+
     let mut timing = TimingTree::new("prove", Level::Debug);
     println!("num_gate_constraints: {}, num_constraints: {}, selectors_info: {:?}",
              data.common.num_gate_constraints, data.common.num_constants,
