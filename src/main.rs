@@ -466,18 +466,18 @@ fn main() -> Result<()> {
         type C = PoseidonGoldilocksConfig;
         type F = <C as GenericConfig<D>>::F;
         // unsafe {
-        //     let f = std::mem::transmute::<u64, F>(0x000000002EF7A1BC);
-        //     let inv = std::mem::transmute::<u64, F>(18446673700670423041);
+        //     let f = std::mem::transmute::<u64, F>(0xfff923c55a2e4a87);
+        //     let inv = std::mem::transmute::<u64, F>(0xbfa99fe2edeb56f5);
         //
         //     println!("inv: {:016X}", std::mem::transmute::<F, u64>(inv));
         //     println!("n  : {:016X}", std::mem::transmute::<F, u64>(f));
-        //     println!("res: {:016X}", std::mem::transmute::<F, u64>(f * inv - inv));
-        //
-        //     fn split(x: u128) -> (u64, u64) {
-        //         (x as u64, (x >> 64) as u64)
-        //     }
-        //
-        //     println!("{:?}", split(f.0 as u128 * inv.0 as u128));
+        //     println!("res: {:016X}", std::mem::transmute::<F, u64>(f * inv));
+        //     //
+        //     // fn split(x: u128) -> (u64, u64) {
+        //     //     (x as u64, (x >> 64) as u64)
+        //     // }
+        //     //
+        //     // println!("{:?}", split(f.0 as u128 * inv.0 as u128));
         // }
 
         // let inputs = [
