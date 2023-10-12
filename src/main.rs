@@ -210,12 +210,24 @@ where
                 root_table_device
 	    };
 
-        let shift_powers = F::coset_shift().powers().take(1<<lg_n).collect::<Vec<F>>();
+        let shift_powers = F::coset_shift().powers().take(1<<(lg_n)).collect::<Vec<F>>();
         let shift_powers_device = {
                 let mut shift_powers_device = DeviceBuffer::from_slice(&shift_powers).unwrap();
             shift_powers_device
 	    };
 
+        let shift_inv_powers = F::coset_shift().powers().take(1<<(lg_n+rate_bits)).map(|f| f.inverse()).collect::<Vec<F>>();
+        let shift_inv_powers_device = {
+            let mut shift_inv_powers_device = DeviceBuffer::from_slice(&shift_inv_powers).unwrap();
+            shift_inv_powers_device
+        };
+
+        // unsafe
+        // {
+        //     let mut file = File::create("inv-powers.bin").unwrap();
+        //     let v = shift_inv_powers;
+        //     file.write_all(std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len()*8));
+        // }
 
         ctx = plonky2::fri::oracle::CudaInvContext{
             inner: CudaInnerContext{stream, stream2,},
@@ -231,6 +243,7 @@ where
             root_table_device,
             root_table_device2,
             shift_powers_device,
+            shift_inv_powers_device,
             ctx: _ctx,
         };
     }
@@ -466,12 +479,12 @@ fn main() -> Result<()> {
         type C = PoseidonGoldilocksConfig;
         type F = <C as GenericConfig<D>>::F;
         // unsafe {
-        //     let f = std::mem::transmute::<u64, F>(0xfff923c55a2e4a87);
-        //     let inv = std::mem::transmute::<u64, F>(0xbfa99fe2edeb56f5);
+        //     let f = std::mem::transmute::<u64, F>(0xfffffffeffe00001);
+        //     // let inv = std::mem::transmute::<u64, F>(0xbfa99fe2edeb56f5);
         //
-        //     println!("inv: {:016X}", std::mem::transmute::<F, u64>(inv));
-        //     println!("n  : {:016X}", std::mem::transmute::<F, u64>(f));
-        //     println!("res: {:016X}", std::mem::transmute::<F, u64>(f * inv));
+        //     println!("inv: {:016X}", std::mem::transmute::<F, u64>(f.inverse()));
+        //     // println!("n  : {:016X}", std::mem::transmute::<F, u64>(f));
+        //     // println!("res: {:016X}", std::mem::transmute::<F, u64>(f * inv));
         //     //
         //     // fn split(x: u128) -> (u64, u64) {
         //     //     (x as u64, (x >> 64) as u64)
