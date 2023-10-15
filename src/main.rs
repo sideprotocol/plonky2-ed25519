@@ -44,7 +44,8 @@ use plonky2::hash::hashing::{hash_n_to_hash_no_pad, hash_n_to_m_no_pad, PlonkyPe
 use plonky2::hash::poseidon::{Poseidon, PoseidonHash, PoseidonPermutation};
 use plonky2_field::fft::fft_root_table;
 use plonky2_field::types::Field;
-use plonky2_util::log2_strict;
+use plonky2_field::zero_poly_coset::ZeroPolyOnCoset;
+use plonky2_util::{log2_ceil, log2_strict};
 use rustacuda::memory::{cuda_malloc, DeviceBox};
 use rustacuda::prelude::*;
 use rustacuda::memory::DeviceBuffer;
@@ -210,6 +211,9 @@ where
                 root_table_device
 	    };
 
+        let constants_sigmas_commitment_leaves_device =
+            DeviceBuffer::from_slice(&data.prover_only.constants_sigmas_commitment.merkle_tree.leaves.concat()).unwrap();
+
         let shift_powers = F::coset_shift().powers().take(1<<(lg_n)).collect::<Vec<F>>();
         let shift_powers_device = {
                 let mut shift_powers_device = DeviceBuffer::from_slice(&shift_powers).unwrap();
@@ -229,6 +233,16 @@ where
         //     file.write_all(std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len()*8));
         // }
 
+        let quotient_degree_bits = log2_ceil(data.common.quotient_degree_factor);
+        let points = F::two_adic_subgroup(data.common.degree_bits() + quotient_degree_bits);
+
+        let z_h_on_coset = ZeroPolyOnCoset::new(data.common.degree_bits(), quotient_degree_bits);
+
+        let points_device = DeviceBuffer::from_slice(&points).unwrap();
+        let z_h_on_coset_evals_device = DeviceBuffer::from_slice(&z_h_on_coset.evals).unwrap();
+        let z_h_on_coset_inverses_device = DeviceBuffer::from_slice(&z_h_on_coset.inverses).unwrap();
+        let k_is_device = DeviceBuffer::from_slice(&data.common.k_is).unwrap();
+
         ctx = plonky2::fri::oracle::CudaInvContext{
             inner: CudaInnerContext{stream, stream2,},
             ext_values_flatten:   Arc::new(ext_values_flatten),
@@ -242,8 +256,15 @@ where
             cache_mem_device,
             root_table_device,
             root_table_device2,
+            constants_sigmas_commitment_leaves_device,
             shift_powers_device,
             shift_inv_powers_device,
+
+            points_device,
+            z_h_on_coset_evals_device,
+            z_h_on_coset_inverses_device,
+            k_is_device,
+
             ctx: _ctx,
         };
     }
