@@ -159,6 +159,22 @@ where
             (values_flatten, ext_values_flatten)
         };
 
+        let (values_flatten3, ext_values_flatten3) = {
+            let poly_num = data.common.config.num_challenges * (1<<rate_bits);
+            let values_flatten_len = poly_num*values_num_per_poly;
+            let ext_values_flatten_len = (values_flatten_len+salt_size*values_num_per_poly) * (1<<rate_bits);
+            let mut ext_values_flatten :Vec<F> = Vec::with_capacity(ext_values_flatten_len);
+            unsafe {
+                ext_values_flatten.set_len(ext_values_flatten_len);
+            }
+
+            let mut values_flatten :Vec<F> = Vec::with_capacity(values_flatten_len);
+            unsafe {
+                values_flatten.set_len(values_flatten_len);
+            }
+            (values_flatten, ext_values_flatten)
+        };
+
         let len_cap = (1 << cap_height);
         let num_digests = 2 * (values_num_per_poly*(1<<rate_bits) - len_cap);
         let num_digests_and_caps = num_digests + len_cap;
@@ -168,6 +184,7 @@ where
         }
 
         let digests_and_caps_buf2 = digests_and_caps_buf.clone();
+        let digests_and_caps_buf3 = digests_and_caps_buf.clone();
 
         // let mut values_device = unsafe{
         //     DeviceBuffer::<F>::uninitialized(values_flatten_len)?
@@ -253,7 +270,12 @@ where
             values_flatten2:       Arc::new(values_flatten2),
             digests_and_caps_buf2: Arc::new(digests_and_caps_buf2),
 
+            ext_values_flatten3:   Arc::new(ext_values_flatten3),
+            values_flatten3:       Arc::new(values_flatten3),
+            digests_and_caps_buf3: Arc::new(digests_and_caps_buf3),
+
             cache_mem_device,
+            second_stage_offset: values_flatten_len + ext_values_flatten_len,
             root_table_device,
             root_table_device2,
             constants_sigmas_commitment_leaves_device,
