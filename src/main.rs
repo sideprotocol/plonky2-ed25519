@@ -219,12 +219,12 @@ where
         };
 
         let root_table_device = {
-                let mut root_table_device = DeviceBuffer::from_slice(&fft_root_table_deg).unwrap();
+                let root_table_device = DeviceBuffer::from_slice(&fft_root_table_deg).unwrap();
                 root_table_device
 	    };
 
         let root_table_device2 = {
-                let mut root_table_device = DeviceBuffer::from_slice(&fft_root_table_max).unwrap();
+                let root_table_device = DeviceBuffer::from_slice(&fft_root_table_max).unwrap();
                 root_table_device
 	    };
 
@@ -233,13 +233,13 @@ where
 
         let shift_powers = F::coset_shift().powers().take(1<<(lg_n)).collect::<Vec<F>>();
         let shift_powers_device = {
-                let mut shift_powers_device = DeviceBuffer::from_slice(&shift_powers).unwrap();
+                let shift_powers_device = DeviceBuffer::from_slice(&shift_powers).unwrap();
             shift_powers_device
 	    };
 
         let shift_inv_powers = F::coset_shift().powers().take(1<<(lg_n+rate_bits)).map(|f| f.inverse()).collect::<Vec<F>>();
         let shift_inv_powers_device = {
-            let mut shift_inv_powers_device = DeviceBuffer::from_slice(&shift_inv_powers).unwrap();
+            let shift_inv_powers_device = DeviceBuffer::from_slice(&shift_inv_powers).unwrap();
             shift_inv_powers_device
         };
 
