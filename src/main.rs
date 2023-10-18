@@ -5,9 +5,9 @@ use anyhow::Result;
 use clap::Parser;
 use core::num::ParseIntError;
 use std::fs;
-use log::{info, Level, LevelFilter};
+use log::{info, Level};
 use plonky2::gates::noop::NoopGate;
-use plonky2::hash::hash_types::{HashOut, RichField};
+use plonky2::hash::hash_types::{RichField};
 use plonky2::iop::witness::{PartialWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
 use plonky2::plonk::circuit_data::{
@@ -32,18 +32,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use std::process::exit;
-use plonky2::timed;
-use plonky2_cuda;
-
-use serde::{Serialize, Deserialize};
-use serde_json;
-use std::io::prelude::*;
 use plonky2::fri::oracle::CudaInnerContext;
-use plonky2::hash::hashing::{hash_n_to_hash_no_pad, hash_n_to_m_no_pad, PlonkyPermutation};
-use plonky2::hash::poseidon::{Poseidon, PoseidonHash, PoseidonPermutation};
 use plonky2_field::fft::fft_root_table;
-use plonky2_field::types::Field;
 use plonky2_field::zero_poly_coset::ZeroPolyOnCoset;
 use plonky2_util::{log2_ceil, log2_strict};
 use rustacuda::memory::{cuda_malloc, DeviceBox};
@@ -124,7 +114,7 @@ where
 
         let lg_n = log2_strict(values_num_per_poly );
         let n_inv = F::inverse_2exp(lg_n);
-        let n_inv_ptr  : *const F = &n_inv;
+        let _n_inv_ptr  : *const F = &n_inv;
 
         let fft_root_table_max = fft_root_table(1<<(lg_n + rate_bits)).concat();
         let fft_root_table_deg    = fft_root_table(1 << lg_n).concat();
@@ -175,7 +165,7 @@ where
             (values_flatten, ext_values_flatten)
         };
 
-        let len_cap = (1 << cap_height);
+        let len_cap = 1 << cap_height;
         let num_digests = 2 * (values_num_per_poly*(1<<rate_bits) - len_cap);
         let num_digests_and_caps = num_digests + len_cap;
         let mut digests_and_caps_buf :Vec<<<C as GenericConfig<D>>::Hasher as Hasher<F>>::Hash> = Vec::with_capacity(num_digests_and_caps);
@@ -203,8 +193,8 @@ where
         //         values_device
 	    // };
 
-        let mut cache_mem_device = {
-            let mut cache_mem_device = unsafe {
+        let cache_mem_device = {
+            let cache_mem_device = unsafe {
                 DeviceBuffer::<F>::uninitialized(
                     values_flatten_len
 
@@ -292,7 +282,7 @@ where
     }
 
 
-    for (i, gate) in data.common.gates.iter().enumerate() {
+    for (_i, gate) in data.common.gates.iter().enumerate() {
         println!("gate: {}", gate.0.id());
     }
 
