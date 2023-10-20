@@ -1,9 +1,11 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
+#![feature(allocator_api)]
 
 use anyhow::Result;
 use clap::Parser;
 use core::num::ParseIntError;
+use std::alloc::{Allocator, AllocError, Layout};
 use std::fs;
 use log::{info, Level};
 use plonky2::gates::noop::NoopGate;
@@ -30,9 +32,10 @@ use plonky2_field::goldilocks_field::GoldilocksField;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::ptr::NonNull;
 use std::sync::Arc;
 
-use plonky2::fri::oracle::CudaInnerContext;
+use plonky2::fri::oracle::{CudaInnerContext, MyAllocator};
 use plonky2_field::fft::fft_root_table;
 use plonky2_field::zero_poly_coset::ZeroPolyOnCoset;
 use plonky2_util::{log2_ceil, log2_strict};
@@ -53,6 +56,7 @@ type ProofTuple<F, C, const D: usize> = (
     VerifierOnlyCircuitData<C, D>,
     CommonCircuitData<F, D>,
 );
+
 
 fn prove_ed25519<F: RichField + Extendable<D> + rustacuda::memory::DeviceCopy, C: GenericConfig<D, F = F>, const D: usize>(
     msg: &[u8],
@@ -116,7 +120,7 @@ where
         let n_inv = F::inverse_2exp(lg_n);
         let _n_inv_ptr  : *const F = &n_inv;
 
-        let fft_root_table_max = fft_root_table(1<<(lg_n + rate_bits)).concat();
+        let fft_root_table_max    = fft_root_table(1<<(lg_n + rate_bits)).concat();
         let fft_root_table_deg    = fft_root_table(1 << lg_n).concat();
 
 
@@ -128,7 +132,7 @@ where
             ext_values_flatten.set_len(ext_values_flatten_len);
         }
 
-        let mut values_flatten :Vec<F> = Vec::with_capacity(values_flatten_len);
+        let mut values_flatten :Vec<F, MyAllocator> = Vec::with_capacity_in(values_flatten_len, MyAllocator{});
         unsafe {
             values_flatten.set_len(values_flatten_len);
         }
@@ -142,7 +146,7 @@ where
                 ext_values_flatten.set_len(ext_values_flatten_len);
             }
 
-            let mut values_flatten :Vec<F> = Vec::with_capacity(values_flatten_len);
+            let mut values_flatten :Vec<F, MyAllocator> = Vec::with_capacity_in(values_flatten_len, MyAllocator{});
             unsafe {
                 values_flatten.set_len(values_flatten_len);
             }
@@ -158,7 +162,7 @@ where
                 ext_values_flatten.set_len(ext_values_flatten_len);
             }
 
-            let mut values_flatten :Vec<F> = Vec::with_capacity(values_flatten_len);
+            let mut values_flatten :Vec<F, MyAllocator> = Vec::with_capacity_in(values_flatten_len, MyAllocator{});
             unsafe {
                 values_flatten.set_len(values_flatten_len);
             }
@@ -196,12 +200,11 @@ where
         let cache_mem_device = {
             let cache_mem_device = unsafe {
                 DeviceBuffer::<F>::uninitialized(
-                    values_flatten_len
+                    // values_flatten_len +
+                         pad_extvalues_len +
+                         ext_values_flatten_len +
 
-                        + pad_extvalues_len
-                        + ext_values_flatten_len
-
-                        + digests_and_caps_buf.len()*4
+                         digests_and_caps_buf.len()*4
                 )
             }.unwrap();
 
@@ -265,7 +268,7 @@ where
             digests_and_caps_buf3: Arc::new(digests_and_caps_buf3),
 
             cache_mem_device,
-            second_stage_offset: values_flatten_len + ext_values_flatten_len,
+            second_stage_offset: ext_values_flatten_len,
             root_table_device,
             root_table_device2,
             constants_sigmas_commitment_leaves_device,
