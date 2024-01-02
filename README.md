@@ -6,7 +6,7 @@
 1. **Prerequisites:**
    - Ensure you have a CPU with a minimum of 8 cores.
    - Allocate at least 16GB of RAM.
-   - Utilize an NVIDIA GPU, preferably the 2080 Ti, with a minimum of 12GB GPU RAM.
+   - Utilize an NVIDIA GPU (here we used the 2080 Ti)
 
 2. **Building and Running:**
    - Clone the repository: `git clone https://github.com/sideprotocol/plonky2-ed25519.git`
