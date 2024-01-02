@@ -1,6 +1,6 @@
 # Welcome to the `plonky2-ed25519` Repository!
 
-`plonky2-ed25519` is a specialized implementation within the Plonky2 family, tailored specifically for the ed25519 cryptographic signature scheme. This repository builds upon the core principles of [`plonky2-gpu`](https://github.com/sideprotocol/plonky2-gpu), leveraging GPU acceleration through the CUDA framework to enhance the efficiency of cryptographic operations.
+`plonky2-ed25519` is a specialized implementation within the Plonky2 family, tailored specifically for the ed25519 cryptographic signature scheme. This repository builds upon the core principles of [`plonky2-gpu`](https://github.com/sideprotocol/plonky2-gpu), leveraging GPU acceleration through the CUDA framework to enhance the efficiency of cryptographic operations. 
 
 **Instructions:**
 1. **Prerequisites:**
@@ -14,9 +14,7 @@
    - Build the project: `./test.sh`
 
 **Test Results:**
-Our tests demonstrate a remarkable reduction in proving time for ed25519 signatures—from 45 seconds in traditional implementations to an astonishing 5 seconds with `plonky2-ed25519`. This optimized performance showcases the power of GPU parallelization in cryptographic operations, providing a tangible advancement in the realm of secure digital signatures.
+Our tests demonstrate a remarkable reduction in proving time for ed25519 signatures — from 45 seconds to 5 seconds with plonky2-ed25519. This optimized performance showcases the power of GPU parallelization in cryptographic operations.
 
-Explore `plonky2-ed25519` to witness the evolution of ed25519 signature efficiency powered by GPU acceleration!
-
-## Teams
+## Contributor
  - [SIDE Labs](https://sidelabs.co)
