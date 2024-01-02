@@ -19,4 +19,4 @@ Our tests demonstrate a remarkable reduction in proving time for ed25519 signatu
 Explore `plonky2-ed25519` to witness the evolution of ed25519 signature efficiency powered by GPU acceleration!
 
 ## Teams
- - [SIDE Labs](https://www.side.one)
+ - [SIDE Labs](https://sidelabs.co)
