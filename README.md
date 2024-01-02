@@ -11,11 +11,7 @@
 2. **Building and Running:**
    - Clone the repository: `git clone https://github.com/sideprotocol/plonky2-ed25519.git`
    - Navigate to the project directory: `cd plonky2-ed25519`
-   - Build the project: `make`
-
-3. **Testing:**
-   - Execute the test suite: `make test`
-   - Analyze the results to ensure the proper functionality of the `plonky2-ed25519` implementation.
+   - Build the project: `./test.sh`
 
 **Test Results:**
 Our tests demonstrate a remarkable reduction in proving time for ed25519 signatures—from 45 seconds in traditional implementations to an astonishing 5 seconds with `plonky2-ed25519`. This optimized performance showcases the power of GPU parallelization in cryptographic operations, providing a tangible advancement in the realm of secure digital signatures.
