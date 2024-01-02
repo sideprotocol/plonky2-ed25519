@@ -1,6 +1,6 @@
 # Welcome to the `plonky2-ed25519` Repository!
 
-`plonky2-ed25519` is a specialized implementation within the Plonky2 family, tailored specifically for the ed25519 cryptographic signature scheme. This repository builds upon the core principles of `plonky2-gpu`, leveraging GPU acceleration through the CUDA framework to enhance the efficiency of cryptographic operations.
+`plonky2-ed25519` is a specialized implementation within the Plonky2 family, tailored specifically for the ed25519 cryptographic signature scheme. This repository builds upon the core principles of [`plonky2-gpu`](https://github.com/sideprotocol/plonky2-gpu), leveraging GPU acceleration through the CUDA framework to enhance the efficiency of cryptographic operations.
 
 **Instructions:**
 1. **Prerequisites:**
