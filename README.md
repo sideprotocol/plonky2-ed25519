@@ -7,6 +7,7 @@
    - Ensure you have a CPU with a minimum of 8 cores.
    - Allocate at least 16GB of RAM.
    - Utilize an NVIDIA GPU with a minimum of 12GB GPU RAM. (here we used the 2080 Ti)
+   - CUDA version: 12+
 
 2. **Building and Running:**
    - Clone the repository: `git clone https://github.com/sideprotocol/plonky2-ed25519.git`
@@ -15,6 +16,8 @@
 
 **Test Results:**
 Our tests demonstrate a remarkable reduction in proving time for ed25519 signatures — from 45 seconds to 5 seconds with plonky2-ed25519. This optimized performance showcases the power of GPU parallelization in cryptographic operations.
+
+**DISCLAIMER: This implementation is currently in its early stages and is not deemed production-ready. Use for experimentation and exploration purposes only.**
 
 ## Contributor
  - [SIDE Labs](https://sidelabs.co)
